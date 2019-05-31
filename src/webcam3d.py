@@ -12,6 +12,7 @@ import cv2
 import time
 import os
 
+from lifting.draw import plot_pose
 from estimator import TfPoseEstimator
 from networks import get_graph_path, model_wh
 from lifting.prob_model import Prob3dPose
@@ -44,21 +45,27 @@ class Terrain(object):
         self.window.addItem(gy)
         self.window.addItem(gz)
 
-        model = 'mobilenet_thin_432x368'
+        model = 'mobilenet_thin'
         camera = 0
-        w, h = model_wh(model)
+        w, h = model_wh("432x368")
         self.e = TfPoseEstimator(get_graph_path(model), target_size=(w, h))
-        self.cam = cv2.VideoCapture("C:\\Users\\velpu\\Desktop\\tf-pose\dance.mp4")
+        self.cam = cv2.VideoCapture(0)
         ret_val, image = self.cam.read()
-        self.poseLifting = Prob3dPose('./src/lifting/models/prob_model_params.mat')
+        self.poseLifting = Prob3dPose('lifting/models/prob_model_params.mat')
         keypoints = self.mesh(image)
-
+        
         self.points = gl.GLScatterPlotItem(
             pos=keypoints,
-            color=pg.glColor((0, 255, 0)),
+            color=pg.glColor((255, 255, 0)),
             size=15
         )
+        # self.lines = gl.GLLinePlotItem(
+        #     pos=lines,
+        #     color=pg.glColor((255, 255, 255)),
+        #     width=2
+        # )
         self.window.addItem(self.points)
+        # self.window.addItem(self.lines)
 
     def mesh(self, image):
         image_h, image_w = image.shape[:2]
@@ -80,9 +87,9 @@ class Terrain(object):
         visibilities = np.array(visibilities)
         transformed_pose2d, weights = self.poseLifting.transform_joints(pose_2d_mpiis, visibilities)
         pose_3d = self.poseLifting.compute_3d(transformed_pose2d, weights)
-
+        
         keypoints = pose_3d[0].transpose()
-
+        # fig = plot_pose(pose_3d[0])
         return keypoints / 80
 
     def update(self):
@@ -92,6 +99,7 @@ class Terrain(object):
         ret_val, image = self.cam.read()
         try:
             keypoints = self.mesh(image)
+            print(keypoints)
         except AssertionError:
             print('body not in image')
         else:
